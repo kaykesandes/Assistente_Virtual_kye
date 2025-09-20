@@ -4,6 +4,11 @@ import subprocess
 import os
 from datetime import datetime
 from modules import tts
+try:
+    from modules.azure_llm import perguntar_ao_modelo, AzureLLMConfigError  # type: ignore
+    _HAS_LLM = True
+except Exception:
+    _HAS_LLM = False
 
 def abrir_wikipedia():
     """Abre a Wikipedia"""
@@ -59,6 +64,7 @@ def mostrar_ajuda():
         "- 'Buscar [termo]' - Busca um termo no Google",
         "- 'Ajuda' - Mostra esta lista de comandos",
         "- 'Sair' ou 'Encerrar' - Encerra o assistente"
+        "- 'Perguntar <sua pergunta>' - Pergunta ao modelo de IA"
     ]
     
     print("\n=== COMANDOS DISPONÍVEIS ===")
@@ -117,6 +123,31 @@ def process_command(texto):
         mostrar_ajuda()
     elif "sair" in texto or "encerrar" in texto or "tchau" in texto or "bye" in texto:
         encerrar_assistente()
+    elif texto.startswith("perguntar ") or texto.startswith("pergunta "):
+        if not _HAS_LLM:
+            aviso = "Recurso de IA não disponível. Instale dependências Azure e configure .env."
+            tts.speak(aviso)
+            print(aviso)
+            return
+        # Remove gatilho
+        pergunta = texto.split(" ", 1)[1].strip()
+        if not pergunta:
+            tts.speak("Você precisa dizer a pergunta após 'perguntar'.")
+            return
+        tts.speak("Consultando modelo de linguagem...")
+        try:
+            resposta = perguntar_ao_modelo(pergunta, contexto="Você é o assistente Kye em português.")
+            print("\n=== RESPOSTA IA ===")
+            print(resposta)
+            print("===================\n")
+            tts.speak(resposta[:250])  # Limita fala
+        except AzureLLMConfigError as e:
+            msg = f"Configuração Azure incompleta: {e}";
+            print(msg)
+            tts.speak("Configuração Azure OpenAI ausente ou incompleta.")
+        except Exception as e:
+            print(f"Erro ao consultar modelo: {e}")
+            tts.speak("Erro ao consultar o modelo.")
     
     # Comando não reconhecido
     else:

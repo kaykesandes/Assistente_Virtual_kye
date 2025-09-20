@@ -4,6 +4,7 @@ import subprocess
 import os
 from datetime import datetime
 from modules.tts_wsl import speak
+from modules.azure_llm import perguntar_ao_modelo, AzureLLMConfigError
 
 def abrir_url_wsl(url, descricao="página"):
     """Abre URL no navegador do Windows via WSL"""
@@ -100,6 +101,7 @@ def mostrar_ajuda():
         "🔍 'buscar [termo]' - Busca um termo no Google",
         "❓ 'ajuda' - Mostra esta lista de comandos",
         "👋 'sair' ou 'encerrar' - Encerra o assistente"
+        "🧠 'perguntar <sua pergunta>' - Pergunta ao modelo de IA"
     ]
     
     print("\n" + "="*50)
@@ -180,6 +182,24 @@ def process_command(texto):
         mostrar_info_wsl()
     elif any(palavra in texto for palavra in ["sair", "encerrar", "tchau", "bye", "exit"]):
         encerrar_assistente()
+    elif texto.startswith("perguntar ") or texto.startswith("pergunta "):
+        pergunta = texto.split(" ", 1)[1].strip()
+        if not pergunta:
+            speak("Forneça a pergunta após a palavra 'perguntar'.")
+            return
+        speak("Consultando modelo de linguagem...")
+        try:
+            resposta = perguntar_ao_modelo(pergunta, contexto="Você é o assistente Kye em português.")
+            print("\n🤖 RESPOSTA IA:")
+            print(resposta)
+            print("================\n")
+            speak(resposta[:250])
+        except AzureLLMConfigError as e:
+            print(f"Configuração Azure incompleta: {e}")
+            speak("Configuração Azure incompleta.")
+        except Exception as e:
+            print(f"Erro ao consultar modelo: {e}")
+            speak("Erro ao consultar o modelo.")
     
     # Comando não reconhecido
     else:
